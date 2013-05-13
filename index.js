@@ -25,6 +25,9 @@ var adapter = module.exports = {
     if (!collection.nick) return cb('No nick specified (e.g. mikermcneil');
     if (!collection.host) return cb('No host specified (e.g. zelazny.freenode.net');
 
+    // Disable blueprint pubsub
+    collection.silent = true;
+
     // Connect/join and save reference to configuration
     connect(collection, cb);
   },
@@ -38,13 +41,22 @@ var adapter = module.exports = {
     cb();
   },
 
+  // Send a message to the IRC channel
   create: function (collectionName, options, cb) {
     if (!options.message) return cb('Please create({ message: "your message" }).');
 
     var client = adapter.configurations[collectionName];
     var activeChannel = adapter.configurations[collectionName]._activeChannel;
+
     client.say(activeChannel, options.message);
-    cb();
+    cb(null, {
+      message: options.message
+    });
+  },
+
+  // Always return an empty set of messages
+  find: function (collectionName, options, cb) {
+    cb(null, []);
   }
 
 };
@@ -66,7 +78,7 @@ function connect(collection, cb) {
   }
 
   // Join the channel
-  client.join(collection.channel, function () {
+  // client.join(collection.channel, function () {
 
     // Listen for incoming chats
     client.addListener('message', function (from, to, message) {
@@ -87,6 +99,6 @@ function connect(collection, cb) {
     // Also save reference to active channel
     adapter.configurations[collection.identity]._activeChannel = collection.channel;
 
-    if (cb) return cb(err, client);
-  });
+    if (cb) return cb(null, client);
+  // });
 }

@@ -6,7 +6,9 @@ module.exports = {
 
 	adapter: 'irc',
 
+	attributes: {},
+
 	nick: 'SailsJSExample',
-	host: 'zelazny.freenode.net',
+	host: 'irc.freenode.net',
 	channel: '#sailsjs'
 };
