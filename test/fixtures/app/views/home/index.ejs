@@ -1,8 +1,8 @@
-<h1> Chats </h1>
+<h1> NodePDX </h1>
 <ul class="chat outlet">
 </ul>
 
-<input class="chat" placeholder="Chat here" type="text"/>
+<input class="chat" placeholder="Something on your mind?" type="text"/>
 
 <script type="text/javascript">
 
@@ -41,11 +41,15 @@ function submitChat (socket, message, cb) {
 }
 
 function appendChat (msg) {
-    $('ul.chat.outlet').append(
-        '<li class="chat">' +
-        '<strong>'+msg.from+'</strong>' +
-        '&nbsp;&nbsp;' + msg.message +
-        '</li>');
+    var $newChat = $('<li class="chat">' +
+    '<strong>@'+msg.from+'</strong>' +
+    '&nbsp;&nbsp;' + msg.message +
+    '</li>');
+
+    $('ul.chat.outlet').append($newChat);
+    
+    // Fade chats out slowly over the course of 25 seconds
+    $newChat.fadeTo(5000, 0.9).fadeTo(15000, 0.3).fadeOut(5000);
 }
 </script>
 
