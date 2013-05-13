@@ -4,6 +4,8 @@
 ---------------------------------------------------------------*/
 
 var async = require('async');
+var irc = require('irc');
+
 
 var adapter = module.exports = {
 
@@ -12,44 +14,20 @@ var adapter = module.exports = {
   // Not terribly relevant if not using a non-SQL / non-schema-ed data store
   syncable: false,
 
-  // Including a commitLog config enables transactions in this adapter
-  // Please note that these are not ACID-compliant transactions: 
-  // They guarantee *ISOLATION*, and use a configurable persistent store, so they are *DURABLE* in the face of server crashes.
-  // However there is no scheduled task that rebuild state from a mid-step commit log at server start, so they're not CONSISTENT yet.
-  // and there is still lots of work to do as far as making them ATOMIC (they're not undoable right now)
-  //
-  // However, for the immediate future, they do a great job of preventing race conditions, and are
-  // better than a naive solution.  They add the most value in findOrCreate() and createEach().
-  // 
-  // commitLog: {
-  //  identity: '__default_mongo_transaction',
-  //  adapter: 'sails-mongo'
-  // },
-
-  // Default configuration for collections
-  // (same effect as if these properties were included at the top level of the model definitions)
-  defaults: {
-
-    // For example:
-    // port: 3306,
-    // host: 'localhost'
-
-    // If setting syncable, you should consider the migrate option, 
-    // which allows you to set how the sync will be performed.
-    // It can be overridden globally in an app (config/adapters.js) and on a per-model basis.
-    //
-    // drop   => Drop schema and data, then recreate it
-    // alter  => Drop/add columns as necessary, but try 
-    // safe   => Don't change anything (good for production DBs)
-    migrate: 'alter'
-  },
+  // Keep track of the different configurations
+  configurations: {},
 
   // This method runs when a model is initially registered at server start time
   registerCollection: function(collection, cb) {
 
-    cb();
-  },
+    // Require that the host, nick, and channels were specified
+    if (!collection.channel) return cb('No channel specified (e.g. #sailsjs');
+    if (!collection.nick) return cb('No nick specified (e.g. mikermcneil');
+    if (!collection.host) return cb('No host specified (e.g. zelazny.freenode.net');
 
+    // Connect/join and save reference to configuration
+    connect(collection, cb);
+  },
 
   // The following methods are optional
   ////////////////////////////////////////////////////////////
@@ -60,164 +38,55 @@ var adapter = module.exports = {
     cb();
   },
 
+  create: function (collectionName, options, cb) {
+    if (!options.message) return cb('Please create({ message: "your message" }).');
 
-  // REQUIRED method if integrating with a schemaful database
-  define: function(collectionName, definition, cb) {
-
-    // Define a new "table" or "collection" schema in the data store
+    var client = adapter.configurations[collectionName];
+    var activeChannel = adapter.configurations[collectionName]._activeChannel;
+    client.say(activeChannel, options.message);
     cb();
-  },
-  // REQUIRED method if integrating with a schemaful database
-  describe: function(collectionName, cb) {
-
-    // Respond with the schema (attributes) for a collection or table in the data store
-    var attributes = {};
-    cb(null, attributes);
-  },
-  // REQUIRED method if integrating with a schemaful database
-  drop: function(collectionName, cb) {
-    // Drop a "table" or "collection" schema from the data store
-    cb();
-  },
-
-  // Optional override of built-in alter logic
-  // Can be simulated with describe(), define(), and drop(),
-  // but will probably be made much more efficient by an override here
-  // alter: function (collectionName, attributes, cb) { 
-  // Modify the schema of a table or collection in the data store
-  // cb(); 
-  // },
-
-
-  // REQUIRED method if users expect to call Model.create() or any methods
-  create: function(collectionName, values, cb) {
-    // Create a single new model specified by values
-
-    // Respond with error or newly created model instance
-    cb(null, values);
-  },
-
-  // REQUIRED method if users expect to call Model.find(), Model.findAll() or related methods
-  // You're actually supporting find(), findAll(), and other methods here
-  // but the core will take care of supporting all the different usages.
-  // (e.g. if this is a find(), not a findAll(), it will only send back a single model)
-  find: function(collectionName, options, cb) {
-
-    // ** Filter by criteria in options to generate result set
-
-    // Respond with an error or a *list* of models in result set
-    cb(null, []);
-  },
-
-  // REQUIRED method if users expect to call Model.update()
-  update: function(collectionName, options, values, cb) {
-
-    // ** Filter by criteria in options to generate result set
-
-    // Then update all model(s) in the result set
-
-    // Respond with error or a *list* of models that were updated
-    cb();
-  },
-
-  // REQUIRED method if users expect to call Model.destroy()
-  destroy: function(collectionName, options, cb) {
-
-    // ** Filter by criteria in options to generate result set
-
-    // Destroy all model(s) in the result set
-
-    // Return an error or nothing at all
-    cb();
-  },
-
-
-
-  // REQUIRED method if users expect to call Model.stream()
-  stream: function(collectionName, options, stream) {
-    // options is a standard criteria/options object (like in find)
-
-    // stream.write() and stream.end() should be called.
-    // for an example, check out:
-    // https://github.com/balderdashy/sails-dirty/blob/master/DirtyAdapter.js#L247
-
   }
-
-
-
-  /*
-  **********************************************
-  * Optional overrides
-  **********************************************
-
-  // Optional override of built-in batch create logic for increased efficiency
-  // otherwise, uses create()
-  createEach: function (collectionName, cb) { cb(); },
-
-  // Optional override of built-in findOrCreate logic for increased efficiency
-  // otherwise, uses find() and create()
-  findOrCreate: function (collectionName, cb) { cb(); },
-
-  // Optional override of built-in batch findOrCreate logic for increased efficiency
-  // otherwise, uses findOrCreate()
-  findOrCreateEach: function (collectionName, cb) { cb(); }
-  */
-
-
-  /*
-  **********************************************
-  * Custom methods
-  **********************************************
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////
-  //
-  // > NOTE:  There are a few gotchas here you should be aware of.
-  //
-  //    + The collectionName argument is always prepended as the first argument.
-  //      This is so you can know which model is requesting the adapter.
-  //
-  //    + All adapter functions are asynchronous, even the completely custom ones,
-  //      and they must always include a callback as the final argument.
-  //      The first argument of callbacks is always an error object.
-  //      For some core methods, Sails.js will add support for .done()/promise usage.
-  //
-  //    + 
-  //
-  ////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-  // Any other methods you include will be available on your models
-  foo: function (collectionName, cb) {
-    cb(null,"ok");
-  },
-  bar: function (collectionName, baz, watson, cb) {
-    cb("Failure!");
-  }
-
-
-  // Example success usage:
-
-  Model.foo(function (err, result) {
-    if (err) console.error(err);
-    else console.log(result);
-
-    // outputs: ok
-  })
-
-  // Example error usage:
-
-  Model.bar(235, {test: 'yes'}, function (err, result){
-    if (err) console.error(err);
-    else console.log(result);
-
-    // outputs: Failure!
-  })
-
-  */
-
 
 };
 
 //////////////                 //////////////////////////////////////////
 ////////////// Private Methods //////////////////////////////////////////
 //////////////                 //////////////////////////////////////////
+
+function connect(collection, cb) {
+  var client = new irc.Client(collection.host, collection.nick, {
+      channels: [collection.channel]
+  });
+
+  // If the client encounters an error, wait, then attempt to reconnect
+  client.addListener('error', onError);
+  function onError (message) {
+      console.error(message);
+      // connect(collection);
+  }
+
+  // Join the channel
+  client.join(collection.channel, function () {
+
+    // Listen for incoming chats
+    client.addListener('message', function (from, to, message) {
+
+        // Fire collection's onCreate method if it exists
+        if (collection.onCreate) {
+          collection.onCreate({
+            from: from,
+            to: to,
+            message: message
+          });
+        }
+    });
+
+    // Save reference to client
+    adapter.configurations[collection.identity] = client;
+
+    // Also save reference to active channel
+    adapter.configurations[collection.identity]._activeChannel = collection.channel;
+
+    if (cb) return cb(err, client);
+  });
+}

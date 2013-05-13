@@ -1,26 +1,28 @@
 {
-  "name": "sails-adapter-boilerplate",
+  "name": "sails-irc",
   "version": "0.0.1",
-  "description": "Boilerplate adapter for Sails.js",
-  "main": "BoilerplateAdapter.js",
+  "description": "IRC adapter for Sails.js",
+  "main": "index.js",
   "scripts": {
     "test": "echo \"Adapter should be tested using Sails.js core.\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/balderdashy/sails-adapter-boilerplate.git"
+    "url": "https://github.com/balderdashy/sails-irc.git"
   },
   "keywords": [
     "orm",
+    "irc",
     "waterline",
     "sails",
     "sailsjs",
     "sails.js"
   ],
-  "author": "Your name here",
+  "author": "Mike McNeil",
   "license": "MIT",
   "readmeFilename": "README.md",
   "dependencies": {
-    "async": "0.1.22"
+    "async": "0.1.22",
+    "irc": "~0.3.6"
   }
 }
