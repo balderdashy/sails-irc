@@ -26,7 +26,7 @@ var adapter = module.exports = {
     if (!collection.host) return cb('No host specified (e.g. zelazny.freenode.net');
 
     // Disable blueprint pubsub
-    collection.silent = true;
+    // collection.silent = true;
 
     // Connect/join and save reference to configuration
     connect(collection, cb);
@@ -47,9 +47,12 @@ var adapter = module.exports = {
 
     var client = adapter.configurations[collectionName];
     var activeChannel = adapter.configurations[collectionName]._activeChannel;
+    var activeNick = adapter.configurations[collectionName]._activeNick;
 
     client.say(activeChannel, options.message);
     cb(null, {
+      from: activeNick,
+      to: activeChannel,
       message: options.message
     });
   },
@@ -73,18 +76,17 @@ function connect(collection, cb) {
   // If the client encounters an error, wait, then attempt to reconnect
   client.addListener('error', onError);
   function onError (message) {
-      console.error(message);
+      sails.log.error("IRCAdapter.onError");
+      sails.log.error(message);
       connect(collection);
   }
 
   // Listen for incoming chats
   client.addListener('message', function (from, to, message) {
 
-    console.log("MESSAGE FIRED",from,to,message);
-
     // Fire collection's onCreate method if it exists
-    if (collection.onCreate) {
-      collection.onCreate({
+    if (collection.publishCreate) {
+      collection.publishCreate({
         from: from,
         to: to,
         message: message
@@ -95,8 +97,9 @@ function connect(collection, cb) {
   // Save reference to client
   adapter.configurations[collection.identity] = client;
 
-  // Also save reference to active channel
+  // Also save reference to active channel and nick
   adapter.configurations[collection.identity]._activeChannel = collection.channel;
+  adapter.configurations[collection.identity]._activeNick = collection.nick;
 
   if (cb) return cb(null, client);
 }
