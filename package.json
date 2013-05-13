@@ -1,6 +1,6 @@
 {
   "name": "sails-irc",
-  "version": "0.0.1",
+  "version": "0.2.0",
   "description": "IRC adapter for Sails.js",
   "main": "index.js",
   "scripts": {
