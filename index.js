@@ -74,31 +74,29 @@ function connect(collection, cb) {
   client.addListener('error', onError);
   function onError (message) {
       console.error(message);
-      // connect(collection);
+      connect(collection);
   }
 
-  // Join the channel
-  // client.join(collection.channel, function () {
+  // Listen for incoming chats
+  client.addListener('message', function (from, to, message) {
 
-    // Listen for incoming chats
-    client.addListener('message', function (from, to, message) {
+    console.log("MESSAGE FIRED",from,to,message);
 
-        // Fire collection's onCreate method if it exists
-        if (collection.onCreate) {
-          collection.onCreate({
-            from: from,
-            to: to,
-            message: message
-          });
-        }
-    });
+    // Fire collection's onCreate method if it exists
+    if (collection.onCreate) {
+      collection.onCreate({
+        from: from,
+        to: to,
+        message: message
+      });
+    }
+  });
 
-    // Save reference to client
-    adapter.configurations[collection.identity] = client;
+  // Save reference to client
+  adapter.configurations[collection.identity] = client;
 
-    // Also save reference to active channel
-    adapter.configurations[collection.identity]._activeChannel = collection.channel;
+  // Also save reference to active channel
+  adapter.configurations[collection.identity]._activeChannel = collection.channel;
 
-    if (cb) return cb(null, client);
-  // });
+  if (cb) return cb(null, client);
 }
